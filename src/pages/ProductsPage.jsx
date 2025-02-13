@@ -1,173 +1,253 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Heart, ShoppingCart, Star, ThumbsUp } from 'lucide-react';
-import Navbar from '../components/Navbar';
+import { Search, Heart, ChevronDown, Star, Sliders, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
-const ReviewCard = ({ review }) => {
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(review.likes);
-
-  return (
-    <div className="py-4 border-b border-gray-100">
-      <div className="flex items-center space-x-3 mb-2">
-        <div className="w-8 h-8 rounded-full bg-gray-200" />
-        <div>
-          <p className="font-medium text-sm">{review.name}</p>
-          <p className="text-xs text-gray-500">{review.date}</p>
-        </div>
-      </div>
-      <div className="flex items-center mb-2">
-        {[...Array(5)].map((_, i) => (
-          <Star
-            key={i}
-            className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-          />
-        ))}
-      </div>
-      <p className="text-sm text-gray-600 mb-2">{review.comment}</p>
-      <button
-        onClick={() => {
-          setLiked(!liked);
-          setLikes(liked ? likes - 1 : likes + 1);
-        }}
-        className="flex items-center space-x-1 text-sm text-gray-500 hover:text-gray-700"
-      >
-        <ThumbsUp className={`w-4 h-4 ${liked ? 'text-blue-500' : ''}`} />
-        <span>{likes}</span>
-      </button>
-    </div>
-  );
-};
-
-const ProductDetails = () => {
-  const { id } = useParams();
-  const [product, setProduct] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(null);
+const ProductCard = ({ product }) => {
   const [isFavorite, setIsFavorite] = useState(false);
-  const [activeTab, setActiveTab] = useState('Details');
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch(`http://localhost:5000/api/products/${id}`)
-      .then((res) => res.json())
-      .then((data) => setProduct(data))
-      .catch((err) => console.error('Error fetching product:', err));
-  }, []);
+  // Parse description and image if they are strings
+  const description = typeof product.description === 'string' 
+    ? JSON.parse(product.description) 
+    : product.description;
 
-  if (!product) return <div className="text-center py-20">Loading...</div>;
-
+  const images = typeof product.image === 'string' 
+    ? JSON.parse(product.image) 
+    : product.image;
+console.log(product.image)
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        {/* Left Column - Images */}
-        <div className="space-y-4">
-          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-            <img
-              src={product.images[selectedImage]}
-              alt="Product"
-              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-            />
-          </div>
-          <div className="grid grid-cols-4 gap-4">
-            {product.images.map((img, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                  selectedImage === index ? 'border-black' : 'border-transparent'
-                }`}
-              >
-                <img src={img} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Column - Product Info */}
-        <div>
-          <h1 className="text-2xl font-semibold mb-4">{product.name}</h1>
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-5 h-5 ${i < product.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-                />
-              ))}
-            </div>
-            <span className="text-sm text-gray-500">{product.reviews.length} reviews</span>
-          </div>
-          <p className="text-3xl font-semibold mb-8">${product.price}</p>
-
-          {/* Sizes */}
-          <div className="mb-8">
-            <h3 className="font-medium mb-2">Size</h3>
-            <div className="grid grid-cols-5 gap-2">
-              {product.sizes.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`py-2 rounded border transition-all duration-200 ${
-                    selectedSize === size
-                      ? 'border-black bg-black text-white'
-                      : 'border-gray-200 hover:border-gray-400'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Add to Cart */}
-          <div className="flex space-x-4 mb-8">
-            <button className="flex-1 bg-black text-white py-3 rounded-full hover:bg-gray-800 transition-colors duration-200 flex items-center justify-center space-x-2">
-              <ShoppingCart className="w-5 h-5" />
-              <span>Add to cart</span>
-            </button>
-            <button
-              onClick={() => setIsFavorite(!isFavorite)}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all duration-200 ${
-                isFavorite ? 'bg-red-50 border-red-200' : 'border-gray-200 hover:border-gray-400'
-              }`}
-            >
-              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-            </button>
-          </div>
-        </div>
+    <div
+      onClick={() => navigate(`/products/${product.id}`)}
+      className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 relative group"
+    >
+      <button 
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent navigation when clicking favorite
+          setIsFavorite(!isFavorite);
+        }}
+        className="absolute right-4 top-4 z-10 p-2 hover:bg-gray-50 rounded-full transition-colors"
+        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      >
+        <Heart 
+          className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'} 
+          transition-colors duration-200`}
+        />
+      </button>
+      
+      <div className="relative mb-4 aspect-square overflow-hidden rounded-lg">
+        <img 
+          src={images[0]} // Use the first image in the array
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
       </div>
-
-      {/* Tabs Section */}
-      <div className="mt-16">
-        <div className="border-b border-gray-200">
-          <div className="flex space-x-8">
-            {['Details', 'Reviews', 'Discussion'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-4 relative ${
-                  activeTab === tab ? 'text-black' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab}
-                {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
-              </button>
-            ))}
-          </div>
+      
+      <div className="space-y-2">
+        <h3 className="font-medium text-gray-900 line-clamp-2">{product.name}</h3>
+        <div className="flex items-center gap-1">
+          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+          <span className="text-sm text-gray-600">{product.rating}</span>
+          <span className="text-gray-400 mx-1">•</span>
+          <span className="text-sm text-gray-600">154 sold</span>
         </div>
-
-        <div className="py-8">
-          {activeTab === 'Reviews' && (
-            <div className="space-y-6">
-              {product.reviews.map((review, index) => (
-                <ReviewCard key={index} review={review} />
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="text-blue-600 font-semibold">${product.price}</p>
       </div>
     </div>
   );
 };
+const safeParseJSON = (data, fallback) => {
+  try {
+    return typeof data === 'string' ? JSON.parse(data) : data;
+  } catch (error) {
+    console.error('Error parsing JSON:', error, data);
+    return fallback; // Return a safe fallback value
+  }
+};
+const ProductsPage = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMerchant, setSelectedMerchant] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [priceRange, setPriceRange] = useState([0, 200]);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  // Fetch products from the API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/products');
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const data = await response.json();
+  
+        // Normalize names (trim spaces, lowercase) and remove duplicates
+        const uniqueProducts = Array.from(
+          new Map(
+            data.map(item => [item.name.trim().toLowerCase(), item])
+          ).values()
+        );
+  
+        const formattedProducts = uniqueProducts.map(product => {
+          const images = safeParseJSON(product.image.replace(/'/g, '"'), []);
+          return {
+            ...product,
+            description: safeParseJSON(product.description.replace(/'/g, '"'), []),
+            image: images,
+            thumbnail: images.length > 0 ? images[0] : '/placeholder.jpg'
+          };
+        });
+  
+        setProducts(formattedProducts);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchProducts();
+  }, []);
+  
+  
+  
 
-export default ProductDetails;
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Search Bar */}
+        <div className="mb-8 relative max-w-2xl mx-auto">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search for Nike Shoe"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
+              aria-label="Search products"
+            />
+            <button 
+              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+              className="md:hidden absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-500"
+            >
+              <Sliders className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex gap-8">
+          {/* Filters Sidebar - Desktop */}
+          <div className={`hidden md:block w-64 flex-shrink-0 ${isFiltersOpen ? '!block fixed inset-0 z-50 bg-white p-6' : ''}`}>
+            <div className="bg-white rounded-lg p-6 space-y-6 shadow-sm sticky top-8">
+              {isFiltersOpen && (
+                <div className="md:hidden flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">Filters</h2>
+                  <button 
+                    onClick={() => setIsFiltersOpen(false)}
+                    className="p-1 hover:bg-gray-50 rounded-full"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              )}
+              
+              <div>
+                <h3 className="font-semibold mb-4">Merchant Type</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Official Store ⭐', value: 'official' },
+                    { label: 'Top Merchant 🔥', value: 'top' },
+                    { label: 'Dropshipper 🏪', value: 'dropshipper' }
+                  ].map((merchant) => (
+                    <label key={merchant.value} className="flex items-center gap-3 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="merchant" 
+                        value={merchant.value}
+                        checked={selectedMerchant === merchant.value}
+                        onChange={(e) => setSelectedMerchant(e.target.value)}
+                        className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-700">{merchant.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-4">Location</h3>
+                <div className="space-y-3">
+                  {['DKI Jakarta', 'Yogyakarta', 'Surabaya', 'Bandung'].map(location => (
+                    <label key={location} className="flex items-center gap-3 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={selectedLocation === location}
+                        onChange={(e) => setSelectedLocation(e.target.checked ? location : 'all')}
+                      />
+                      <span className="text-gray-700">{location}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-4">Price Range</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0"
+                      max="200"
+                      value={priceRange[1]}
+                      onChange={(e) => setPriceRange([priceRange[0], e.target.value])}
+                      className="w-full range-slider"
+                    />
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>${priceRange[0]}</span>
+                    <span>${priceRange[1]}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Products Section */}
+          <div className="flex-1">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-gray-600">
+                Showing {products.length} results for <span className="font-semibold">'Nike Shoe'</span>
+              </h2>
+              <div className="flex items-center gap-3">
+                <span className="text-gray-600">Sort by:</span>
+                <div className="relative">
+                  <select 
+                    className="appearance-none pl-3 pr-8 py-2 border rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="Sort products"
+                  >
+                    <option>Popular</option>
+                    <option>Newest</option>
+                    <option>Price: Low to High</option>
+                    <option>Price: High to Low</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default ProductsPage;

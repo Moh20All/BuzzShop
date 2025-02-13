@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, ThumbsUp } from 'lucide-react';
-import Navbar from '../components/Navbar';
 
 const ReviewCard = ({ review }) => {
   const [liked, setLiked] = useState(false);
@@ -39,54 +39,63 @@ const ReviewCard = ({ review }) => {
 };
 
 const ProductDetails = () => {
+  const { id } = useParams();
+  const [product, setProduct] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState('Details');
 
-  const images = [
-    "/api/placeholder/500/500",
-    "/api/placeholder/500/500",
-    "/api/placeholder/500/500",
-    "/api/placeholder/500/500"
-  ];
+  const fetchProduct = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/products/${id}`);
+      let data = await response.json();
 
-  const sizes = [
-    '40.5', '41', '42', '43', '44.5', '44', '44.5', '45', '46'
-  ];
+      // Convert `size` string to an array
+      data.size = data.size ? data.size.split(",") : [];
 
-  const reviews = [
-    {
-      name: "Helen M.",
-      date: "Yesterday",
-      rating: 5,
-      comment: "Excellent running shoes. It turns very sharply on the foot.",
-      likes: 42
-    },
-    {
-      name: "Ann D.",
-      date: "2 days ago",
-      rating: 4,
-      comment: "Good shoes",
-      likes: 38
+      // Fix the `image` field (convert string to array)
+      try {
+        data.image = JSON.parse(data.image.replace(/'/g, '"')); // Convert single quotes to double and parse
+      } catch (error) {
+        console.error("Error parsing image field:", error);
+        data.image = []; // Fallback to empty array if parsing fails
+      }
+
+      // Fix the `description` field (convert string to array of objects)
+      try {
+        data.description = JSON.parse(data.description.replace(/'/g, '"')); // Convert single quotes to double and parse
+      } catch (error) {
+        console.error("Error parsing description field:", error);
+        data.description = []; // Fallback to empty array if parsing fails
+      }
+
+      setProduct(data);
+    } catch (error) {
+      console.error("Error fetching product:", error);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchProduct();
+  }, [id]);
+
+  if (!product) return <div className="text-center py-20">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Left Column - Images */}
         <div className="space-y-4">
           <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
             <img
-              src={images[selectedImage]}
+              src={product.image[selectedImage]}
               alt="Product"
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />
           </div>
           <div className="grid grid-cols-4 gap-4">
-            {images.map((img, index) => (
+            {product.image.map((img, index) => (
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
@@ -102,37 +111,25 @@ const ProductDetails = () => {
 
         {/* Right Column - Product Info */}
         <div>
-          <div className="flex items-center space-x-2 mb-4">
-            <img src="/api/placeholder/24/24" alt="Reebok" className="w-6 h-6 rounded-full" />
-            <span className="text-sm">Reebok</span>
-          </div>
-
-          <h1 className="text-2xl font-semibold mb-4">Shoes Reebok Zig Kinetica 3</h1>
-          
+          <h1 className="text-2xl font-semibold mb-4">{product.name}</h1>
           <div className="flex items-center space-x-4 mb-6">
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                <Star
+                  key={i}
+                  className={`w-5 h-5 ${i < product.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                />
               ))}
             </div>
-            <span className="text-sm text-gray-500">52 reviews</span>
+            <span className="text-sm text-gray-500">{product.reviews?.length || 0} reviews</span>
           </div>
+          <p className="text-3xl font-semibold mb-8">${product.price}</p>
 
-          <p className="text-3xl font-semibold mb-8">$199.00</p>
-
-          <div className="mb-8">
-            <h3 className="font-medium mb-2">Color</h3>
-            <div className="flex space-x-2">
-              <button className="w-8 h-8 rounded-full bg-white border-2 border-black" />
-              <button className="w-8 h-8 rounded-full bg-gray-200" />
-              <button className="w-8 h-8 rounded-full bg-black" />
-            </div>
-          </div>
-
+          {/* Sizes */}
           <div className="mb-8">
             <h3 className="font-medium mb-2">Size</h3>
             <div className="grid grid-cols-5 gap-2">
-              {sizes.map((size) => (
+              {product.size.map((size) => (
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
@@ -148,6 +145,7 @@ const ProductDetails = () => {
             </div>
           </div>
 
+          {/* Add to Cart */}
           <div className="flex space-x-4 mb-8">
             <button className="flex-1 bg-black text-white py-3 rounded-full hover:bg-gray-800 transition-colors duration-200 flex items-center justify-center space-x-2">
               <ShoppingCart className="w-5 h-5" />
@@ -161,10 +159,6 @@ const ProductDetails = () => {
             >
               <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
             </button>
-          </div>
-
-          <div className="text-sm text-gray-500">
-            Free delivery on orders over $50.0
           </div>
         </div>
       </div>
@@ -182,9 +176,7 @@ const ProductDetails = () => {
                 }`}
               >
                 {tab}
-                {activeTab === tab && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
-                )}
+                {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
               </button>
             ))}
           </div>
@@ -192,34 +184,10 @@ const ProductDetails = () => {
 
         <div className="py-8">
           {activeTab === 'Reviews' && (
-            <div className="space-y-8">
-              <div className="flex items-center space-x-4">
-                <div className="text-4xl font-semibold">4.8</div>
-                <div className="flex-1">
-                  {[5, 4, 3, 2, 1].map((rating) => (
-                    <div key={rating} className="flex items-center space-x-2">
-                      <div className="text-sm text-gray-500 w-3">{rating}</div>
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-yellow-400"
-                          style={{
-                            width: `${rating === 5 ? '70' : rating === 4 ? '20' : '10'}%`
-                          }}
-                        />
-                      </div>
-                      <div className="text-sm text-gray-500 w-8">
-                        {rating === 5 ? '28' : rating === 4 ? '9' : '4'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                {reviews.map((review, index) => (
-                  <ReviewCard key={index} review={review} />
-                ))}
-              </div>
+            <div className="space-y-6">
+              {product.reviews?.map((review, index) => (
+                <ReviewCard key={index} review={review} />
+              ))}
             </div>
           )}
         </div>
