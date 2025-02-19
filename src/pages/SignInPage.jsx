@@ -1,29 +1,70 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Facebook, Twitter } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [language, setLanguage] = useState('English (United States)');
-  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Basic validation
+    if (!email || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Login successful
+        navigate('/'); // Redirect to home page or dashboard
+      } else {
+        // Login failed
+        setError(data.message || 'Login failed. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      
-
       {/* Main Content */}
       <main className="max-w-md mx-auto pt-16 px-4">
         <h1 className="text-3xl font-semibold text-center mb-2">Log in</h1>
-        
+
         <p className="text-center text-gray-600 text-sm mb-8">
-          New to Buzz Shop ? <a href="/register" className="text-blue-600 hover:text-blue-700 transition-colors">Sign up for free</a>
+          New to Buzz Shop ?{' '}
+          <a href="/register" className="text-blue-600 hover:text-blue-700 transition-colors">
+            Sign up for free
+          </a>
         </p>
 
-        <form className="space-y-4">
+        {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-sm text-gray-700 mb-1">Email address</label>
             <input
               type="email"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
               placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -31,9 +72,11 @@ const SignInPage = () => {
             <label className="block text-sm text-gray-700 mb-1">Password</label>
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
                 placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
               <button
                 type="button"
@@ -53,7 +96,7 @@ const SignInPage = () => {
 
           <button
             type="submit"
-            className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
           >
             Log in
           </button>
@@ -75,7 +118,7 @@ const SignInPage = () => {
               <Facebook size={20} className="text-blue-600" />
               <span className="text-sm">Facebook</span>
             </button>
-            
+
             <button
               type="button"
               className="flex items-center justify-center space-x-2 border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"

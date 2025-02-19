@@ -4,15 +4,15 @@ import { Heart, ShoppingCart, Star, ThumbsUp } from 'lucide-react';
 
 const ReviewCard = ({ review }) => {
   const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(review.likes);
+  const [likes, setLikes] = useState(0); // Static likes for now
 
   return (
     <div className="py-4 border-b border-gray-100">
       <div className="flex items-center space-x-3 mb-2">
         <div className="w-8 h-8 rounded-full bg-gray-200" />
         <div>
-          <p className="font-medium text-sm">{review.name}</p>
-          <p className="text-xs text-gray-500">{review.date}</p>
+          <p className="font-medium text-sm">Customer {review.customer_id}</p>
+          <p className="text-xs text-gray-500">{review.review_date}</p>
         </div>
       </div>
       <div className="flex items-center mb-2">
@@ -23,7 +23,7 @@ const ReviewCard = ({ review }) => {
           />
         ))}
       </div>
-      <p className="text-sm text-gray-600 mb-2">{review.comment}</p>
+      <p className="text-sm text-gray-600 mb-2">{review.review_text}</p>
       <button
         onClick={() => {
           setLiked(!liked);
@@ -41,43 +41,44 @@ const ReviewCard = ({ review }) => {
 const ProductDetails = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState('Details');
 
+  // Fetch product details
   const fetchProduct = async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/products/${id}`);
-      let data = await response.json();
+      const data = await response.json();
 
-      // Convert `size` string to an array
-      data.size = data.size ? data.size.split(",") : [];
-
-      // Fix the `image` field (convert string to array)
-      try {
-        data.image = JSON.parse(data.image.replace(/'/g, '"')); // Convert single quotes to double and parse
-      } catch (error) {
-        console.error("Error parsing image field:", error);
-        data.image = []; // Fallback to empty array if parsing fails
-      }
-
-      // Fix the `description` field (convert string to array of objects)
-      try {
-        data.description = JSON.parse(data.description.replace(/'/g, '"')); // Convert single quotes to double and parse
-      } catch (error) {
-        console.error("Error parsing description field:", error);
-        data.description = []; // Fallback to empty array if parsing fails
+      // Ensure the product data is in the correct format
+      if (!data) {
+        throw new Error('Product not found');
       }
 
       setProduct(data);
     } catch (error) {
-      console.error("Error fetching product:", error);
+      console.error('Error fetching product:', error);
+    }
+  };
+
+  // Fetch reviews for the product
+  const fetchReviews = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/reviews/${id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch reviews');
+      }
+      const data = await response.json();
+      setReviews(data);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
     }
   };
 
   useEffect(() => {
     fetchProduct();
+    fetchReviews();
   }, [id]);
 
   if (!product) return <div className="text-center py-20">Loading...</div>;
@@ -85,65 +86,32 @@ const ProductDetails = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        {/* Left Column - Images */}
+        {/* Left Column - Placeholder Image */}
         <div className="space-y-4">
           <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
             <img
-              src={product.image[selectedImage]}
+              src="/placeholder.jpg" // Placeholder image
               alt="Product"
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
             />
-          </div>
-          <div className="grid grid-cols-4 gap-4">
-            {product.image.map((img, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                  selectedImage === index ? 'border-black' : 'border-transparent'
-                }`}
-              >
-                <img src={img} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
-              </button>
-            ))}
           </div>
         </div>
 
         {/* Right Column - Product Info */}
         <div>
-          <h1 className="text-2xl font-semibold mb-4">{product.name}</h1>
+          <h1 className="text-2xl font-semibold mb-4">{product.product_name}</h1>
           <div className="flex items-center space-x-4 mb-6">
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
-                  className={`w-5 h-5 ${i < product.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                  className={`w-5 h-5 ${i < 4 ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} // Static rating for now
                 />
               ))}
             </div>
-            <span className="text-sm text-gray-500">{product.reviews?.length || 0} reviews</span>
+            <span className="text-sm text-gray-500">{reviews.length} reviews</span>
           </div>
           <p className="text-3xl font-semibold mb-8">${product.price}</p>
-
-          {/* Sizes */}
-          <div className="mb-8">
-            <h3 className="font-medium mb-2">Size</h3>
-            <div className="grid grid-cols-5 gap-2">
-              {product.size.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`py-2 rounded border transition-all duration-200 ${
-                    selectedSize === size
-                      ? 'border-black bg-black text-white'
-                      : 'border-gray-200 hover:border-gray-400'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Add to Cart */}
           <div className="flex space-x-4 mb-8">
@@ -183,10 +151,22 @@ const ProductDetails = () => {
         </div>
 
         <div className="py-8">
+          {activeTab === 'Details' && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Product Details</h3>
+              <p className="text-gray-600">
+                <strong>Category:</strong> {product.category}
+              </p>
+              <p className="text-gray-600">
+                <strong>Supplier ID:</strong> {product.supplier_id}
+              </p>
+            </div>
+          )}
+
           {activeTab === 'Reviews' && (
             <div className="space-y-6">
-              {product.reviews?.map((review, index) => (
-                <ReviewCard key={index} review={review} />
+              {reviews.map((review) => (
+                <ReviewCard key={review.review_id} review={review} />
               ))}
             </div>
           )}

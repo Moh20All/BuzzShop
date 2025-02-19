@@ -1,6 +1,7 @@
 import { useState } from "react";
 import React from "react";
 import { ShoppingCart, Menu, X, ShoppingBag, PersonStanding } from "lucide-react"; // Import Lucide icons
+import { CiUser } from "react-icons/ci";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false); // State for mobile menu
@@ -10,6 +11,9 @@ const Navbar = () => {
   };
   const handleshop = ()=>{
     window.location.href = '/cart'
+  }
+  const handleuser = ()=>{
+    window.location.href = '/signin'
   }
   return (
     <nav className="bg-gray-900 text-white shadow-lg">
@@ -43,6 +47,10 @@ const Navbar = () => {
             {/* Cart Icon */}
             <button onClick={handleshop} className="hover:text-gray-300 relative">
               <ShoppingBag className="w-6 h-6" />
+              <personalbar/>
+            </button>
+            <button onClick={handleuser} className="hover:text-gray-300 relative">
+              <CiUser className="w-6 h-6" />
               <personalbar/>
             </button>
 
