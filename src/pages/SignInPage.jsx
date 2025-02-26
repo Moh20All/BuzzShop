@@ -31,6 +31,9 @@ const SignInPage = () => {
 
       if (response.ok) {
         // Login successful
+console.log(data.customer.customer_id)
+localStorage.setItem('userId',data.customer.customer_id);
+
         navigate('/'); // Redirect to home page or dashboard
       } else {
         // Login failed

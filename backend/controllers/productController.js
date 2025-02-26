@@ -61,3 +61,26 @@ export const createProduct = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+export const getVocabulary = async (req, res) => {
+  try {
+    console.log('Fetching product names...');
+    const [products] = await db.query(
+      'SELECT product_name FROM products'
+    );
+    console.log('Products fetched:', products);
+
+    const vocabularySet = new Set();
+    products.forEach((product) => {
+      const words = product.product_name.toLowerCase().split(/\s+/);
+      words.forEach((word) => vocabularySet.add(word));
+    });
+
+    const vocabulary = Array.from(vocabularySet);
+    console.log('Vocabulary:', vocabulary);
+
+    res.json({ vocabulary });
+  } catch (error) {
+    console.error('Error fetching vocabulary:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
