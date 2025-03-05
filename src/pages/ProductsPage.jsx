@@ -1,25 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Heart, ChevronDown, Star, Sliders, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Autocomplete from '../components/Autocomplete';
 
-const ProductCard = ({ product, onProductClick }) => {
+const ProductCard = React.memo(({ product, onProductClick }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const navigate = useNavigate();
 
+  const handleCardClick = () => {
+    navigate(`/products/${product.product_id}`);
+    onProductClick(product.product_name);
+  };
+
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    setIsFavorite(!isFavorite);
+  };
+
   return (
     <div
-      onClick={() => {
-        navigate(`/products/${product.product_id}`);
-        onProductClick(product.product_name); // Track product click
-      }}
+      onClick={handleCardClick}
       className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 relative group"
     >
       <button 
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent navigation when clicking favorite
-          setIsFavorite(!isFavorite);
-        }}
+        onClick={handleFavoriteClick}
         className="absolute right-4 top-4 z-10 p-2 hover:bg-gray-50 rounded-full transition-colors"
         aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
       >
@@ -33,16 +37,16 @@ const ProductCard = ({ product, onProductClick }) => {
         <h3 className="font-medium text-gray-900 line-clamp-2">{product.product_name}</h3>
         <div className="flex items-center gap-1">
           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-          <span className="text-sm text-gray-600">{product.rating || '4.5'}</span> {/* Fallback rating */}
+          <span className="text-sm text-gray-600">{product.rating || '4.5'}</span>
           <span className="text-gray-400 mx-1">•</span>
           <span className="text-sm text-gray-600">154 sold</span>
         </div>
         <p className="text-blue-600 font-semibold">${product.price}</p>
-        <p className="text-sm text-gray-500">{product.category}</p> {/* Display category */}
+        <p className="text-sm text-gray-500">{product.category}</p>
       </div>
     </div>
   );
-};
+});
 
 const ProductsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,187 +54,184 @@ const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1); // Current page
-  const limit = 50; // Fixed to 50 items per page
-  const [selectedCategories, setSelectedCategories] = useState([]); // Selected categories for filtering
+  const [page, setPage] = useState(1);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [keywords, setKeywords] = useState([]);
   const [vocabulary, setVocabulary] = useState([]);
   const [productVectors, setProductVectors] = useState({});
   const [userVector, setUserVector] = useState([]);
+  
+  const limit = 50;
 
-  // Fetch products from the API
-  const fetchProducts = async () => {
+  // Fetch API data with error handling
+  const fetchData = useCallback(async (url, errorMessage) => {
     try {
-      const response = await fetch('http://localhost:5000/api/products');
+      const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('Failed to fetch products');
+        throw new Error(errorMessage || `Failed to fetch from ${url}`);
       }
-      const data = await response.json();
-      setProducts(data); // Set the products directly
+      return await response.json();
+    } catch (err) {
+      console.error(`Error fetching from ${url}:`, err);
+      return null;
+    }
+  }, []);
+
+  // Fetch products
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data = await fetchData('http://localhost:5000/api/products', 'Failed to fetch products');
+      if (data) {
+        setProducts(data);
+      } else {
+        setError('Failed to fetch products');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchData]);
 
-  // Fetch keywords from the API
-  const fetchKeywords = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/keywords');
-      const data = await response.json();
+  // Fetch keywords
+  const fetchKeywords = useCallback(async () => {
+    const data = await fetchData('http://localhost:5000/api/keywords', 'Failed to fetch keywords');
+    if (data) {
       setKeywords(data);
-    } catch (error) {
-      console.error('Error fetching keywords:', error);
     }
-  };
+  }, [fetchData]);
 
-  // Fetch vocabulary from the API
-   // Fetch vocabulary from the API
-   const fetchVocabulary = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/products/vocabulary');
-      if (!response.ok) {
-        throw new Error('Failed to fetch vocabulary');
-      }
-      const data = await response.json();
-      setVocabulary(data.vocabulary); // Set the vocabulary state
-      console.log('Vocabulary:', data.vocabulary); // Log the vocabulary array
-    } catch (error) {
-      console.error('Error fetching vocabulary:', error);
+  // Fetch vocabulary
+  const fetchVocabulary = useCallback(async () => {
+    const data = await fetchData('http://localhost:5000/api/products/vocabulary', 'Failed to fetch vocabulary');
+    if (data) {
+      setVocabulary(data.vocabulary);
     }
-  };
+  }, [fetchData]);
 
   // Generate product vectors
-  const generateProductVectors = () => {
+  const generateProductVectors = useCallback(() => {
+    if (!vocabulary.length || !products.length) return;
+    
     const vectors = {};
-    console.log(localStorage.userId)
     products.forEach((product) => {
-      const vector = new Array(vocabulary.length).fill(0); // Initialize vector with 0s
-      const productWords = product.product_name.toLowerCase().split(/\s+/); // Split product name into words
+      const vector = new Array(vocabulary.length).fill(0);
+      const productWords = product.product_name.toLowerCase().split(/\s+/);
 
-      // Check each word in the vocabulary
       productWords.forEach((word) => {
         const index = vocabulary.indexOf(word);
         if (index !== -1) {
-          vector[index] = 1; // Set to 1 if word exists in product name
+          vector[index] = 1;
         }
       });
 
-      vectors[product.product_id] = vector; // Map product ID to its vector
+      vectors[product.product_id] = vector;
     });
 
-    setProductVectors(vectors); // Set the product vectors state
-  };
+    setProductVectors(vectors);
+  }, [vocabulary, products]);
 
   // Update user vector on interaction
-  const updateUserVector = (interactionText) => {
-    const userId = localStorage.getItem('userId'); // Get the user ID
-    if (!userId || vocabulary.length === 0) return; // If the user is not signed in or vocabulary is not loaded, do nothing
+  const updateUserVector = useCallback((interactionText) => {
+    const userId = localStorage.getItem('userId');
+    if (!userId || !vocabulary.length) return;
 
-    const userVector = JSON.parse(localStorage.getItem(`userVector_${userId}`)); // Get the user's vector
-    const words = interactionText.toLowerCase().split(/\s+/); // Split interaction text into words
+    const storedVector = localStorage.getItem(`userVector_${userId}`);
+    const currentVector = storedVector ? JSON.parse(storedVector) : new Array(vocabulary.length).fill(0);
+    const words = interactionText.toLowerCase().split(/\s+/);
 
-    // Update the user vector
+    let isUpdated = false;
     words.forEach((word) => {
       const index = vocabulary.indexOf(word);
       if (index !== -1) {
-        userVector[index] += 1; // Increment the corresponding index in the user vector
+        currentVector[index] += 1;
+        isUpdated = true;
       }
     });
 
-    // Save the updated vector to localStorage
-    localStorage.setItem(`userVector_${userId}`, JSON.stringify(userVector));
-    setUserVector(userVector); // Update the state
-    console.log('Updated User Vector:', userVector); // Log the updated user vector
-  };
+    if (isUpdated) {
+      localStorage.setItem(`userVector_${userId}`, JSON.stringify(currentVector));
+      setUserVector(currentVector);
+    }
+  }, [vocabulary]);
 
-  // Handle search
-  const handleSearch = (query) => {
+  // Handle search with debounce
+  const handleSearch = useCallback((query) => {
     setSearchQuery(query);
-    updateUserVector(query); // Update user vector based on search query
-  };
+    updateUserVector(query);
+  }, [updateUserVector]);
 
+  // Initialize data
   useEffect(() => {
-    fetchProducts();
-    fetchKeywords();
-    fetchVocabulary(); // Fetch vocabulary when the component mounts
-  }, []);
+    const fetchAllData = async () => {
+      await Promise.all([fetchProducts(), fetchKeywords(), fetchVocabulary()]);
+    };
+    fetchAllData();
+  }, [fetchProducts, fetchKeywords, fetchVocabulary]);
 
   // Generate product vectors when vocabulary or products change
   useEffect(() => {
-    if (vocabulary.length > 0 && products.length > 0) {
-      generateProductVectors();
-      const userId = localStorage.getItem('userId'); // Get the user ID
-      if (userId && vocabulary.length > 0) {
-        const storedVector = localStorage.getItem(`userVector_${userId}`);
-        if (storedVector) {
-          setUserVector(JSON.parse(storedVector)); // Initialize the state with the stored vector
-        } else {
-          // Initialize user vector with zeros if it doesn't exist
-          const initialVector = new Array(vocabulary.length).fill(0);
-          localStorage.setItem(`userVector_${userId}`, JSON.stringify(initialVector));
-          setUserVector(initialVector);
-        }
+    generateProductVectors();
+  }, [vocabulary, products, generateProductVectors]);
+
+  // Initialize user vector from localStorage
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (userId && vocabulary.length > 0) {
+      const storedVector = localStorage.getItem(`userVector_${userId}`);
+      if (storedVector) {
+        setUserVector(JSON.parse(storedVector));
+      } else {
+        const initialVector = new Array(vocabulary.length).fill(0);
+        localStorage.setItem(`userVector_${userId}`, JSON.stringify(initialVector));
+        setUserVector(initialVector);
       }
     }
-  }, [vocabulary, products]);
-
-  // Log product vectors to the console
-  useEffect(() => {
-    if (Object.keys(productVectors).length > 0) {
-      console.log('Product Vectors:', productVectors);
-    }
-  }, [productVectors]);
-
-  // Log user vector to the console
-  useEffect(() => {
-    if (userVector.length > 0) {
-      console.log('User Vector:', userVector);
-    }
-  }, [userVector]);
-
-    // Initialize user vector from localStorage
-
-
-  // Get unique categories from products
-  const categories = [...new Set(products.map(product => product.category))];
+  }, [vocabulary]);
 
   // Handle category selection
-  const handleCategoryChange = (category) => {
+  const handleCategoryChange = useCallback((category) => {
     setSelectedCategories((prev) =>
       prev.includes(category)
-        ? prev.filter((c) => c !== category) // Deselect category
-        : [...prev, category] // Select category
+        ? prev.filter((c) => c !== category)
+        : [...prev, category]
     );
-    setPage(1); // Reset to the first page when filters change
-  };
+    setPage(1);
+  }, []);
 
-  // Filter products based on search query and selected categories
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.product_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategories.length === 0 || selectedCategories.includes(product.category);
-    return matchesSearch && matchesCategory;
-  });
+  // Memoize categories
+  const categories = useMemo(() => {
+    return [...new Set(products.map(product => product.category))];
+  }, [products]);
 
-  // Paginate products
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  // Memoize filtered products
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch = product.product_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchQuery, selectedCategories]);
+
+  // Memoize paginated products
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    return filteredProducts.slice(startIndex, endIndex);
+  }, [filteredProducts, page, limit]);
 
   // Pagination handlers
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (page * limit < filteredProducts.length) {
       setPage(page + 1);
     }
-  };
+  }, [page, limit, filteredProducts.length]);
 
-  const handlePreviousPage = () => {
+  const handlePreviousPage = useCallback(() => {
     if (page > 1) {
       setPage(page - 1);
     }
-  };
+  }, [page]);
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -247,8 +248,8 @@ const ProductsPage = () => {
         <div className="mb-8 relative max-w-2xl mx-auto">
           <Autocomplete
             keywords={keywords}
-            onSelectSuggestion={(suggestion) => handleSearch(suggestion)} // Track search interaction
-            onFilter={(query) => handleSearch(query)} // Track search interaction
+            onSelectSuggestion={handleSearch}
+            onFilter={handleSearch}
           />
         </div>
         <div className="flex gap-8">
@@ -291,7 +292,7 @@ const ProductsPage = () => {
           <div className="flex-1">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-gray-600">
-                Showing {filteredProducts.length} results for <span className="font-semibold">'{searchQuery}'</span>
+                Showing {filteredProducts.length} results {searchQuery && <span>for <span className="font-semibold">'{searchQuery}'</span></span>}
               </h2>
               <div className="flex items-center gap-3">
                 <span className="text-gray-600">Sort by:</span>
@@ -315,31 +316,33 @@ const ProductsPage = () => {
                 <ProductCard
                   key={product.product_id}
                   product={product}
-                  onProductClick={updateUserVector} // Pass click handler to ProductCard
+                  onProductClick={updateUserVector}
                 />
               ))}
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex justify-between items-center mt-8">
-              <button
-                onClick={handlePreviousPage}
-                disabled={page === 1}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-300"
-              >
-                Previous
-              </button>
-              <span className="text-gray-600">
-                Page {page} of {Math.ceil(filteredProducts.length / limit)}
-              </span>
-              <button
-                onClick={handleNextPage}
-                disabled={page * limit >= filteredProducts.length}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-300"
-              >
-                Next
-              </button>
-            </div>
+            {filteredProducts.length > limit && (
+              <div className="flex justify-between items-center mt-8">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-300"
+                >
+                  Previous
+                </button>
+                <span className="text-gray-600">
+                  Page {page} of {Math.ceil(filteredProducts.length / limit)}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={page * limit >= filteredProducts.length}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-300"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </main>
